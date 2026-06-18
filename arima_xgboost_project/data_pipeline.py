@@ -54,33 +54,47 @@ def fetch_yfinance(
     return df
 
 def clean_data(df, ticker):
-    
-    # count missing values before
+
+    # force price and volume columns to be proper numbers
+    # sometimes yfinance returns them as text which will break ARIMA later
+    # errors="coerce" means if something cant be a number, make it NaN
+    # our dropna() below will then catch and remove those rows
+    for col in ["Open", "High", "Low", "Close", "Volume"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # remove duplicate dates — sometimes yfinance gives same date twice
+    # if ARIMA sees two rows for the same date it gets confused and crashes
+    # keep="first" means we keep the first one and delete the rest
+    df = df.drop_duplicates(subset=["Date"], keep="first")
+
+    # count missing values before cleaning
     missing_before = df.isnull().sum().sum()
-    
-    # count rows before
+
+    # count rows before cleaning
     rows_before = len(df)
-    
+
     # remove rows with missing values
     df = df.dropna()
-    
+
     # sort by date oldest to newest — ARIMA requires this
     df = df.sort_values("Date")
-    
+
     # reset row numbers so they go 0, 1, 2, 3 again
     df = df.reset_index(drop=True)
-    
+
     # count what we have after cleaning
     missing_after = df.isnull().sum().sum()
-    rows_after = len(df)
-    
+    rows_after    = len(df)
+
     # report everything
     print(f"  {ticker}: missing values {missing_before} -> {missing_after}")
     print(f"  {ticker}: rows {rows_before} -> {rows_after} "
           f"({rows_before - rows_after} removed)")
-    print(f"  Date range: {df['Date'].min().date()} to {df['Date'].max().date()}")
-    
-    return df 
+    print(f"  Date range: {df['Date'].min().date()} "
+          f"to {df['Date'].max().date()}")
+
+    return df
 
 
 def main():
