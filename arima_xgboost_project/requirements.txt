@@ -1,9 +1,0 @@
-yfinance
-pandas
-numpy
-matplotlib
-statsmodels
-pmdarima
-xgboost
-scikit-learn
-requests

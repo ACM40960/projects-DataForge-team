@@ -1,2 +1,17 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/-bKyY6qM)
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=23948756&assignment_repo_type=AssignmentRepo)
+---
+
+## Branch Guide
+
+| Branch | What is in it | Owner |
+|---|---|---|
+| `main` | GitHub Classroom bot template only — do not touch | Module repo |
+| `soham-arima` | Stable Week 1 code — closing price plots with train/test split line | Soham |
+| `soham-arima-events` | Updated Week 1 code — closing price plots with real world event markers instead of train/test split. Events marked: COVID crash (Mar 2020), ChatGPT launch (Nov 2022), ARM IPO (Sep 2023), NVDA stock split (Jun 2024) | Soham |
+| `asawari-xgboost` | XGBoost residual model and feature engineering | Asawari |
+
+### Why are there two versions of the closing price plot?
+
+The `soham-arima` branch shows a train/test split line on the charts.
+We replaced this in `soham-arima-events` because our model uses a rolling
+window — there is no single fixed split point. The event markers version
+is more honest and tells a better story about why these stocks are volatile.
