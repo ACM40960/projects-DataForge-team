@@ -66,7 +66,7 @@ def plot_closing_prices():
             if df_start <= event_date <= df_end:
 
                 # Convert datetime to matplotlib float
-                event_x = mdates.date2num(event_date)
+                event_x = float(mdates.date2num(event_date))
 
                 ax.axvline(
                     x=event_x,
