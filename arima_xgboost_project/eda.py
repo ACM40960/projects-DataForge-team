@@ -1,6 +1,7 @@
 # eda.py
 # Task 4 - plotting closing prices for all 8 stocks + marking some
 # real world events on the chart so we can see how price reacted
+
 # Task 5 - daily returns + rolling volatility (basically how "jumpy"
 # the stock is on a day to day basis)
 
@@ -35,8 +36,7 @@ EVENTS = [
 
 
 # ============================================================
-# TASK 4 STARTS HERE
-# plotting closing price with the event lines
+# TASK 4 Close Plotting with Event Markers
 # saves into -> results/plots/task4_closing_prices/
 # ============================================================
 def plot_closing_prices():
@@ -212,12 +212,10 @@ def closing_price_summary():
 
     return summary_df
 
-# TASK 4 ENDS HERE
 
 
 # ============================================================
-# TASK 5 STARTS HERE
-# daily returns + rolling volatility
+# TASK 5 daily returns + rolling volatility
 # saves into -> results/plots/task5_daily_returns/
 # ============================================================
 def plot_daily_returns():
@@ -430,8 +428,6 @@ def daily_returns_summary():
     print(f"Saved -> {save_path}")
 
     return summary_df
-
-# TASK 5 ENDS HERE
 
 
 if __name__ == "__main__":
