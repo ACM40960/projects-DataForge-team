@@ -190,7 +190,7 @@ Based on just looking at the charts:
 
 ---
 
-## Things to Remember When Writing the Methodology Section
+## Methodology Section briefs 
 
 - All 8 stocks show a clear change in behaviour after late 2022
   when the AI boom started. This is called a structural break.
