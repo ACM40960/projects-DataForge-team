@@ -1,0 +1,2 @@
+ticker,series,adf_statistic,p_value,n_lags_used,n_obs,critical_1pct,critical_5pct,critical_10pct,is_stationary
+MU,second_difference,-14.528376692140865,5.381656911920954e-27,25,1844,-3.4339012073737605,-2.8631086593659174,-2.567605099413705,True

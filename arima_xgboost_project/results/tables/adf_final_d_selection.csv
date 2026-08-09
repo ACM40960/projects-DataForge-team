@@ -1,0 +1,9 @@
+ticker,recommended_d,p_value_at_chosen_d,note
+NVDA,1,4.8664476429076456e-12,stationary after first differencing
+AMD,1,3.666471463102844e-08,stationary after first differencing
+SMCI,1,3.1293911560954554e-11,stationary after first differencing
+ARM,1,1.1083257193980784e-25,stationary after first differencing
+MU,2,5.381656911920954e-27,needed a second difference to become stationary
+AVGO,1,7.629904781719117e-14,stationary after first differencing
+TSM,1,2.8431797487162673e-12,stationary after first differencing
+000660.KS,1,5.221319054946495e-10,stationary after first differencing
