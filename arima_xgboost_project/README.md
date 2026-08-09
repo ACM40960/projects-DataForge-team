@@ -10,7 +10,8 @@ The hybrid approach works in two stages.
 2) XGBoost is trained on ARIMA's in-sample residuals, the errors ARIMA could not explain and predicts those residuals on the test set
 
 The final forecast is the sum of both:
-Hybrid Forecast = Rolling ARIMA Prediction + XGBoost Residual Correction
+### Hybrid Forecast = Rolling ARIMA Prediction + XGBoost Residual Correction
+
 The hybrid model outperforms plain ARIMA on all 8 stocks, reducing MAPE from a range of 20–49% down to 2–5%.
 ## Methodology
 ...
