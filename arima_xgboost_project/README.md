@@ -1,4 +1,3 @@
-```markdown
 # A Hybrid ARIMA XGBoost Model for Forecasting Volatile AI Semiconductor Stocks
 ## Overview
 ...
