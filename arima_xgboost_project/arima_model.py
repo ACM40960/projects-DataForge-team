@@ -1,8 +1,4 @@
 # arima_model.py
-# this is where all the actual ARIMA stuff is (task 6 onward),
-# this file is just for plotting/looking at the data, not testing/modeling it.
-
-
 
 import os
 import warnings
@@ -25,10 +21,10 @@ DATA_DIR = "data"
 TABLES_DIR = os.path.join("results", "tables")
 PLOTS_DIR = os.path.join("results", "plots")
 ARIMA_FITS_DIR = os.path.join(PLOTS_DIR, "task7_14_arima_fits")
-PREDICTIONS_DIR = "forecasts"  # kept for future use (e.g. real future-date forecasts)
+PREDICTIONS_DIR = "forecasts" 
 RESIDUALS_DIR = "residuals"
 
-# task 7 = NVDA, task 8 = AMD, ... task 14 = 000660.KS
+#  for task 7 = NVDA to task 14 = 000660.KS
 TASK_TICKER_MAP = {
     7: "NVDA",
     8: "AMD",
@@ -40,7 +36,8 @@ TASK_TICKER_MAP = {
     14: "000660.KS",
 }
 
-# TASK 6 - ADF stationarity test
+# Task 6   -> run_adf, adf_test, adf_test_second_difference, determine_final_d
+# work out how much differencing each ticker needs (d) [ d from the arima(p,d,q) model ]
 
 
 def run_adf(series, label):
@@ -69,6 +66,8 @@ def run_adf(series, label):
         "is_stationary": is_stationary,
     }
 
+# task 6 proper. two tests per ticker: raw price, then first difference.
+# raw should fail every time (prices trend), first difference should pass for almost everything - that's what tells us d=1 is enough
 
 def adf_test():
 
@@ -121,7 +120,7 @@ def adf_test():
     return results_df
 
 
-# only runs second difference for tickers that failed at first
+# only runs second difference for tickers that failed at first time.
 def adf_test_second_difference(results_df):
 
     os.makedirs(TABLES_DIR, exist_ok=True)
@@ -171,9 +170,9 @@ def adf_test_second_difference(results_df):
     return second_df
 
 
-# picks the final d for each ticker based on whatever passed
+# picks the final "d" for each ticker based on whatever has passed
 def determine_final_d(results_df, second_df):
-
+# the smallest d that works because every extra difference throws away a row and adds noise
     final_rows = []
 
     for ticker in TICKERS:
@@ -230,11 +229,16 @@ def determine_final_d(results_df, second_df):
     return final_df
 
 
-# TASK 7-14 - fit ARIMA for each ticker, same function reused
+# Task 7-14 -> get_d_for_ticker, plot_acf_pacf, find_best_order,
+# plot_train_test_forecast, check_residuals_look_random,
+# save_arima_handoff, fit_arima_for_ticker, fit_all_arima_models
 
 
 def get_d_for_ticker(ticker):
     # grabs the d we already found in task 6
+    # reads back what task 6 decided instead of recalculating. 
+    # keeps the two stages from ever disagreeing, and means the d choice can be audited in csv rather 
+    
     path = os.path.join(TABLES_DIR, "adf_final_d_selection.csv")
 
     if not os.path.exists(path):
@@ -259,6 +263,11 @@ def get_d_for_ticker(ticker):
 
 def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
     # the plot we actually look at to guess p and q
+    
+    # ACF  = how related today's change is to the change N days ago, including everything in between
+    
+    # PACF = same thing with the indirect effects stripped out -> hints at p
+    # the shaded band is the "could just be randomness". bars inside it mean nothing, bars poking out are real signal.
     os.makedirs(ARIMA_FITS_DIR, exist_ok=True)
 
     clean_series = series.dropna()
@@ -274,7 +283,7 @@ def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
     ax2.set_xlabel("Lag (days)")
 
     # mark the lag we actually picked, so the plot and the model
-    # choice are visually tied together instead of living in
+    # choice are visually tied together instead of living in a
     # separate places
     if chosen_q is not None and chosen_q > 0:
         ax1.axvline(chosen_q, color="darkorange", linestyle="--", linewidth=1.5, label=f"chosen q={chosen_q}")
@@ -286,10 +295,6 @@ def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
 
     order_str = f"ARIMA({chosen_p},{d},{chosen_q})" if chosen_p is not None else f"d={d}"
     fig.suptitle(f"{ticker} - ACF & PACF  ({order_str})", fontsize=12, fontweight="bold")
-
-    # quick plain-english note if basically nothing crosses the
-    # confidence band - saves the reader wondering if the plot
-    # is broken when it's actually just a flat, low-order case
     from statsmodels.tsa.stattools import acf as _acf, pacf as _pacf
     n = len(clean_series)
     conf_band = 1.96 / np.sqrt(n)
@@ -311,22 +316,21 @@ def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
 
 
 def find_best_order(close_series, d, max_p=5, max_q=5):
-    # brute force grid search, 36 combos, keep lowest BIC
-    #
-    # using BIC instead of AIC here on purpose - AIC's penalty for
-    # extra parameters is too weak when the series is close to
-    # white noise (which several of these tickers are, per the
-    # flat ACF/PACF plots). AIC ends up picking high-order models
+    # using brute force grid search and having 36 combos keeping lowest BIC
+    
+    # Also using BIC instead of AIC here on purpose - AIC's penalty for extra parameters is too weak when the series is close to
+    # white noise (which several of these tickers are, per the  flat ACF/PACF plots). AIC ends up picking high-order models
     # that fit the historical data slightly better but forecast
-    # worse on new data. BIC's penalty scales with sample size and
+    # worse on new data. 
+    
+    # BIC's penalty scales with sample size and
     # pushes back much harder against unnecessary p/q, which
     # matches what the ACF/PACF plots are actually showing
-    #
-    # also skip anything that didn't actually converge
+
     best_bic = float("inf")
     best_order = None
     best_model = None
-    n_skipped = 0
+    n_skipped = 0 # skip what is not converged or has NaN BIC as a result 
 
     for p in range(max_p + 1):
         for q in range(max_q + 1):
@@ -398,9 +402,9 @@ def check_residuals_look_random(fitted_model, ticker):
     if not looks_random:
         print(f"  (heads up: {ticker}'s residuals still show some pattern, ljung-box p={lb_pvalue:.4f})")
 
-    # same test but on squared residuals - catches volatility
-    # clustering instead of a missed mean pattern. ARIMA can't
-    # fix this by changing p/q, that's a job for xgboost
+    # same test but on squared residuals - catches volatility clustering instead of a missed mean pattern. 
+    # ARIMA can't fix this by changing p/q, that's a job for xgboost
+    
     squared_residuals = residuals ** 2
     arch_result = acorr_ljungbox(squared_residuals, lags=[10], return_df=True)
     arch_pvalue = arch_result["lb_pvalue"].iloc[0]
@@ -414,11 +418,8 @@ def check_residuals_look_random(fitted_model, ticker):
 
 def save_arima_handoff(ticker, df, fitted_model, d):
     # one combined file per ticker instead of two - residual is
-    # just actual minus predicted, so keeping them in separate
-    # files was pure duplication. this is the file asawari's
-    # xgboost stage actually needs: Date, Actual, Predicted (the
-    # "L" / linear component), Residual (the "N" / nonlinear
-    # leftover she's trying to predict)
+    # just actual minus predicted, so keeping them in separate files was pure duplication.
+    # xgboost stage actually needs: Date, Actual, Predicted (the "L" / linear component), Residual (the "N" nonlinear leftover that is being trying to predict)
     os.makedirs(RESIDUALS_DIR, exist_ok=True)
 
     fitted_values = fitted_model.fittedvalues.iloc[d:]
@@ -435,9 +436,9 @@ def save_arima_handoff(ticker, df, fitted_model, d):
     handoff_df.to_csv(save_path, index=False)
     print(f"  Saved -> {save_path}")
 
-    # in-sample metrics - how well ARIMA fit everything it already
-    # saw (different from the 30-day holdout test further down,
+    # in-sample metrics - how well ARIMA fit everything it already seen (different from the 30-day holdout test further down,
     # which checks how well it forecasts data it DIDN'T see)
+    
     errors = handoff_df["Actual"] - handoff_df["Predicted"]
     rmse_in = np.sqrt(np.mean(errors ** 2))
     mae_in = np.mean(np.abs(errors))
@@ -479,8 +480,8 @@ def fit_arima_for_ticker(ticker, task_number):
 
     print(f"  Best order: ARIMA{best_order}, AIC: {best_model.aic:.2f}")
 
-    # difference d times just for the ACF/PACF plot - the actual
-    # fit above handles differencing internally via order=(p,d,q)
+    # difference d times just for the ACF/PACF plot - the actual fit above handles differencing internally via order=(p,d,q)
+    
     diffed = close_series.copy()
     for _ in range(d):
         diffed = diffed.diff()
