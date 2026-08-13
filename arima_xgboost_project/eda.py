@@ -20,25 +20,22 @@ DATA_DIR = "data"
 PLOTS_DIR = os.path.join("results", "plots")
 TABLES_DIR = os.path.join("results", "tables")
 
-# giving each task its own folder inside plots/ so it doesn't turn
-# into a mess of 40+ random pngs once we add more tasks later
+# giving each task its own folder inside plots so it doesn't turn into a mess of 40+ random pngs once we add more tasks later
 CLOSING_PRICE_DIR = os.path.join(PLOTS_DIR, "task4_closing_prices")
 DAILY_RETURNS_DIR = os.path.join(PLOTS_DIR, "task5_daily_returns")
 
-# events list, reusing this in both task 4 and task 5 charts so
-# they line up and tell the same story
+# SK Hynix trades in korea so it's priced in won, not dollars.
+CURRENCY = {"000660.KS": ("KRW", "")}
+DEFAULT_CURRENCY = ("USD", "$")
+
+# Event that has an impact.
 EVENTS = [
     ("2020-03-16", "COVID\nCrash", "red"),
-    ("2022-11-30", "ChatGPT\nLaunch", "green"),
-    ("2023-09-14", "ARM\nIPO", "blue"),
-    ("2024-06-10", "NVDA\nSplit", "purple"),
 ]
 
 
-# ============================================================
 # TASK 4 Close Plotting with Event Markers
-# saves into -> results/plots/task4_closing_prices/
-# ============================================================
+
 def plot_closing_prices():
 
     os.makedirs(CLOSING_PRICE_DIR, exist_ok=True)
@@ -75,8 +72,7 @@ def plot_closing_prices():
             event_date = pd.Timestamp(date_str)
 
             # only draw the event line if it actually falls inside
-            # this stock's date range (ARM won't have COVID on it
-            # since it didn't even exist yet)
+            # this stock's date range (ARM won't have COVID on it since it didn't even exist yet)
             if df_start <= event_date <= df_end:
 
                 # matplotlib wants dates as floats not timestamps
@@ -108,13 +104,16 @@ def plot_closing_prices():
 
         plt.title(
             f"{ticker} — Daily Closing Price (2019–2026)\n"
-            f"with Key Market Events",
+            f"with COVID Crash marked",
             fontsize=12,
             fontweight="bold"
         )
 
+        # pull the right currency for this ticker - everything is USD except SK Hynix
+        code, symbol = CURRENCY.get(ticker, DEFAULT_CURRENCY)
+
         plt.xlabel("Date")
-        plt.ylabel("Price (USD)")
+        plt.ylabel(f"Price ({code})")
 
         plt.grid(True, alpha=0.3, linestyle="--")
         plt.legend(loc="upper left", fontsize=8)
@@ -123,11 +122,13 @@ def plot_closing_prices():
         max_price = df["Close"].max()
         last_price = df["Close"].iloc[-1]
 
-        # little stats box in the corner, just min/max/latest
+        # little stats box in the corner, just min/max/latest.
+        # no decimals for won, those prices are in the millions and 2150000.00 just looks daft
+        dp = 0 if code == "KRW" else 2
         stats = (
-            f"Min: ${min_price:.2f}\n"
-            f"Max: ${max_price:.2f}\n"
-            f"Latest: ${last_price:.2f}"
+            f"Min: {symbol}{min_price:,.{dp}f}\n"
+            f"Max: {symbol}{max_price:,.{dp}f}\n"
+            f"Latest: {symbol}{last_price:,.{dp}f}"
         )
 
         ax.text(
@@ -161,9 +162,10 @@ def plot_closing_prices():
         print(f"Saved -> {save_path}")
 
 
-# quick numbers version of task 4 - basically the same stats that
-# show up in the corner box on the plot, just dumped into one csv
-# so i don't have to open 8 pngs and squint at the numbers
+# quick numbers version of task 4 - basically the same stats that show up
+# in the corner box on the plot, just dumped into one csv so i don't have
+# to open 8 pngs and squint at the numbers
+
 def closing_price_summary():
 
     os.makedirs(TABLES_DIR, exist_ok=True)
@@ -195,12 +197,15 @@ def closing_price_summary():
             "latest_price": last_price,
             "total_return_pct": total_return_pct,
             "mean_price": df["Close"].mean(),
+            
+            # flagging the currency in the table too, otherwise SK Hynix's
+            # numbers look like a typo next to the USD ones
+            "currency": CURRENCY.get(ticker, DEFAULT_CURRENCY)[0],
         })
 
     summary_df = pd.DataFrame(rows)
 
-    # putting the biggest gainers on top, easier to see who
-    # actually did well vs who's been flat/down
+    # putting the biggest gainers on top, easier to see who actually did well vs who's been flat/down
     summary_df = summary_df.sort_values(
         "total_return_pct", ascending=False
     ).reset_index(drop=True)
@@ -213,11 +218,8 @@ def closing_price_summary():
     return summary_df
 
 
-
-# ============================================================
 # TASK 5 daily returns + rolling volatility
-# saves into -> results/plots/task5_daily_returns/
-# ============================================================
+
 def plot_daily_returns():
 
     os.makedirs(DAILY_RETURNS_DIR, exist_ok=True)
@@ -231,18 +233,18 @@ def plot_daily_returns():
         df = pd.read_csv(path, parse_dates=["Date"])
         df = df.sort_values("Date").reset_index(drop=True)
 
-        # % change from yesterday's close to today's close
-        # this is basically the "how much did it move today" number,
-        # which matters more than the raw price for the volatility side
+        # percentage change from yesterday's close to today's close this is basically the "how much did it move today" number,
+        # which matters more than the raw price for the volatility side.
+        # also puts every ticker on the same scale, so SK Hynix's won
+        # prices stop being a problem here
         df["Return"] = df["Close"].pct_change() * 100
 
         # first row is always NaN since there's no "yesterday" for it
         df = df.dropna(subset=["Return"]).reset_index(drop=True)
 
-        # rolling std over last 21 days (~1 trading month), gives us
-        # a smoothed volatility line instead of just noisy daily spikes.
-        # this is basically showing where the stock had calm periods
-        # vs crazy periods, which normal ARIMA can't really pick up on
+        # rolling std over last 21 days gives us a smoothed volatility line instead of just noisy daily spikes.
+        # this is basically showing where the stock had calm periods vs crazy periods, which normal ARIMA can't really pick up on
+        
         df["RollingVol"] = df["Return"].rolling(window=21).std()
 
         r_min = df["Return"].min()
@@ -300,7 +302,7 @@ def plot_daily_returns():
 
         ax1.set_title(
             f"{ticker} — Daily Returns (2019–2026)\n"
-            f"with Key Market Events",
+            f"with COVID Crash marked",
             fontsize=12,
             fontweight="bold"
         )
@@ -333,11 +335,8 @@ def plot_daily_returns():
             )
         )
 
-        # bottom graph - the rolling volatility. this is honestly
-        # the more important panel since it actually shows the
-        # "clustering" pattern (calm patch, then a burst of crazy
-        # days, then calm again) which is what we're trying to
-        # explain with the xgboost part later
+        # bottom graph - the rolling volatility. this is honestly the more
+        # important panel since it actually shows the "clustering" pattern it assumes the error variance is constant
         ax2.plot(
             df["Date"],
             df["RollingVol"],
@@ -379,9 +378,9 @@ def plot_daily_returns():
         print(f"Saved -> {save_path}")
 
 
-# numbers version of task 5. same stats as the plot's text box,
-# plus a couple extra (skew + kurtosis) that are useful for the
-# writeup later when talking about "fat tails" / non-normal returns
+# numbers version of task 5. same stats as the plot's text box, plus skew
+# and kurtosis which are useful for the writeup when talking about fat
+# tails / non-normal returns
 def daily_returns_summary():
 
     os.makedirs(TABLES_DIR, exist_ok=True)
@@ -408,6 +407,8 @@ def daily_returns_summary():
             "std_dev_pct": df["Return"].std(),
             "max_gain_pct": df["Return"].max(),
             "max_drop_pct": df["Return"].min(),
+            # pandas .kurt() gives EXCESS kurtosis (normal = 0, not 3).
+            # worth knowing before quoting these in the report
             "skewness": df["Return"].skew(),
             "kurtosis": df["Return"].kurt(),
             "peak_rolling_vol_pct": df["RollingVol"].max(),
@@ -416,7 +417,7 @@ def daily_returns_summary():
 
     summary_df = pd.DataFrame(rows)
 
-    # most volatile stock on top, makes it easy to spot the 
+    # most volatile stock on top, makes it easy to spot the
     # crazy ones (looking at you SMCI and ARM)
     summary_df = summary_df.sort_values(
         "std_dev_pct", ascending=False
