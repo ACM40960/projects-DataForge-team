@@ -187,6 +187,13 @@ def run_ticker(ticker):
     full_features["resid_lag_1"] = full_residuals.shift(1).values
     full_features["resid_lag_2"] = full_residuals.shift(2).values
     full_features["resid_rolling_std_5"] = full_residuals.rolling(5).std().shift(1).values
+    # Option 2 — volatility-regime features (Somkunwar et al. 2024, Paper 3)
+    # squared and absolute residual lags give XGBoost direct ARCH-like signals
+    full_features["resid_lag_1_sq"] = (full_residuals.shift(1) ** 2).values
+    full_features["abs_resid_lag_1"] = full_residuals.shift(1).abs().values
+    full_features["rolling_abs_resid_5"] = (
+        full_residuals.abs().rolling(5).mean().shift(1).values
+    )
 
     train_features = full_features.iloc[:len(train_df)].reset_index(drop=True)
     test_features = full_features.iloc[len(train_df):].reset_index(drop=True)
@@ -205,56 +212,42 @@ def run_ticker(ticker):
     )
     xgb_residual_pred = xgb_residual_model.predict(test_features)
 
-    # standalone XGBoost on raw prices — kept as a comparison baseline
-    xgb_price_model = XGBRegressor(
-        n_estimators=200,
-        max_depth=3,
-        learning_rate=0.05,
-        random_state=42,
-    )
-    train_price = train_df["Close"].reset_index(drop=True)
-    xgb_price_model.fit(
-        train_features.loc[valid_rows],
-        train_price.loc[valid_rows],
-    )
-    xgb_only_pred = xgb_price_model.predict(test_features)
-
-    # hybrid = rolling ARIMA (strong trend base) + XGBoost residual correction
+    # hybrid = rolling ARIMA + XGBoost residual correction
     hybrid_pred = rolling_pred.values + xgb_residual_pred
 
     actual = test_df["Close"].values
 
-    # plot
     os.makedirs(PLOTS_DIR, exist_ok=True)
-    plt.figure(figsize=(12, 5))
-    plt.plot(test_df["Date"], actual, label="Actual", color="black", linewidth=1.2)
+    plt.figure(figsize=(14, 5))
+    plt.plot(test_df["Date"], actual,
+             label="Actual", color="black", linewidth=1.4)
     plt.plot(test_df["Date"], arima_test_pred.values,
-             label=f"ARIMA{order} multi-step (baseline)", linestyle="--", color="steelblue")
+             label=f"ARIMA{order} multi-step", linestyle="--",
+             color="steelblue", alpha=0.6)
+    plt.plot(test_df["Date"], rolling_pred.values,
+             label="Rolling ARIMA", linestyle=":", color="green", linewidth=1.3)
     plt.plot(test_df["Date"], hybrid_pred,
-             label="Hybrid (Rolling ARIMA + XGBoost)", linestyle="--", color="darkorange")
-    plt.title(f"{ticker} — ARIMA multi-step vs Hybrid (Rolling ARIMA + XGBoost)")
+             label="Hybrid (Rolling ARIMA + XGBoost)", linestyle="--",
+             color="darkorange", linewidth=1.2)
+    plt.title(f"{ticker} — Multi-step ARIMA vs Rolling ARIMA vs Hybrid")
     plt.xlabel("Date")
     plt.ylabel("Price")
-    plt.legend()
+    plt.legend(fontsize=9)
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, f"{ticker}_forecast_comparison.png"), dpi=150)
     plt.close()
 
     return {
-        "ticker": ticker,
-        "arima_order": order,
-        "n_train": len(train_df),
-        "n_test": len(test_df),
-        "arima_rmse": rmse(actual, arima_test_pred.values),
-        "arima_mae": mae(actual, arima_test_pred.values),
-        "arima_mape": mape(actual, arima_test_pred.values),
-        "xgb_rmse": rmse(actual, xgb_only_pred),
-        "xgb_mae": mae(actual, xgb_only_pred),
-        "xgb_mape": mape(actual, xgb_only_pred),
-        "hybrid_rmse": rmse(actual, hybrid_pred),
-        "hybrid_mae": mae(actual, hybrid_pred),
-        "hybrid_mape": mape(actual, hybrid_pred),
-        "improvement_pct": mape(actual, arima_test_pred.values) - mape(actual, hybrid_pred),
+        "ticker":               ticker,
+        "arima_order":          order,
+        "n_train":              len(train_df),
+        "n_test":               len(test_df),
+        "arima_multistep_mape": mape(actual, arima_test_pred.values),
+        "arima_multistep_rmse": rmse(actual, arima_test_pred.values),
+        "rolling_arima_mape":   mape(actual, rolling_pred.values),
+        "rolling_arima_rmse":   rmse(actual, rolling_pred.values),
+        "hybrid_mape":          mape(actual, hybrid_pred),
+        "hybrid_rmse":          rmse(actual, hybrid_pred),
     }
 
 
@@ -265,10 +258,13 @@ def main():
         print(f"\nRunning {ticker}...")
         result = run_ticker(ticker)
         results.append(result)
-        print(f"  ARIMA{result['arima_order']} MAPE: {result['arima_mape']:.2f}%   "
-              f"Hybrid MAPE: {result['hybrid_mape']:.2f}%")
+        print(
+            f"  ARIMA multi-step: {result['arima_multistep_mape']:.2f}%  "
+            f"| rolling ARIMA: {result['rolling_arima_mape']:.2f}%  "
+            f"| hybrid: {result['hybrid_mape']:.2f}%"
+        )
 
-    results_df = pd.DataFrame(results).sort_values("improvement_pct", ascending=False)
+    results_df = pd.DataFrame(results).sort_values("rolling_arima_mape")
 
     os.makedirs(TABLES_DIR, exist_ok=True)
     out_path = os.path.join(TABLES_DIR, "model_comparison.csv")
