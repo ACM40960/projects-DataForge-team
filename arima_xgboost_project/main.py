@@ -2,6 +2,8 @@ import os
 import warnings
 import numpy as np
 import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 try:
     from statsmodels.tsa.arima.model import ARIMA
@@ -44,12 +46,14 @@ def load_arima_order(ticker):
     # reads Soham's best order from arima_model.py's BIC grid search
     # so we don't run a second grid search here
     path = os.path.join(TABLES_DIR, "arima_fit_summary.csv")
+
     if not os.path.exists(path):
         print(f"  arima_fit_summary.csv not found — defaulting to (1,1,1) for {ticker}")
         return (1, 1, 1)
 
     summary = pd.read_csv(path)
     row = summary[summary["ticker"] == ticker]
+
     if row.empty:
         print(f"  {ticker} not in arima_fit_summary.csv — defaulting to (1,1,1)")
         return (1, 1, 1)
@@ -224,18 +228,25 @@ def run_ticker(ticker):
 
     actual = test_df["Close"].values
 
+    # naive benchmark — tomorrow = today's close. costs nothing to compute and
+    # it is the thing a one-step-ahead price forecast actually has to beat,
+    # since prices only move ~2% a day
+    naive_pred = np.concatenate([[train_df["Close"].values[-1]], actual[:-1]])
+
     # plot
     os.makedirs(PLOTS_DIR, exist_ok=True)
     plt.figure(figsize=(12, 5))
     plt.plot(test_df["Date"], actual, label="Actual", color="black", linewidth=1.2)
     plt.plot(test_df["Date"], arima_test_pred.values,
              label=f"ARIMA{order} multi-step (baseline)", linestyle="--", color="steelblue")
+    plt.plot(test_df["Date"], rolling_pred.values,
+             label="Rolling ARIMA (one-step)", linestyle="--", color="seagreen")
     plt.plot(test_df["Date"], hybrid_pred,
              label="Hybrid (Rolling ARIMA + XGBoost)", linestyle="--", color="darkorange")
-    plt.title(f"{ticker} — ARIMA multi-step vs Hybrid (Rolling ARIMA + XGBoost)")
+    plt.title(f"{ticker} — ARIMA multi-step vs Rolling ARIMA vs Hybrid")
     plt.xlabel("Date")
     plt.ylabel("Price")
-    plt.legend()
+    plt.legend(fontsize=8)
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, f"{ticker}_forecast_comparison.png"), dpi=150)
     plt.close()
@@ -248,13 +259,24 @@ def run_ticker(ticker):
         "arima_rmse": rmse(actual, arima_test_pred.values),
         "arima_mae": mae(actual, arima_test_pred.values),
         "arima_mape": mape(actual, arima_test_pred.values),
+        "rolling_arima_rmse": rmse(actual, rolling_pred.values),
+        "rolling_arima_mae": mae(actual, rolling_pred.values),
+        "rolling_arima_mape": mape(actual, rolling_pred.values),
         "xgb_rmse": rmse(actual, xgb_only_pred),
         "xgb_mae": mae(actual, xgb_only_pred),
         "xgb_mape": mape(actual, xgb_only_pred),
         "hybrid_rmse": rmse(actual, hybrid_pred),
         "hybrid_mae": mae(actual, hybrid_pred),
         "hybrid_mape": mape(actual, hybrid_pred),
+        "naive_rmse": rmse(actual, naive_pred),
+        "naive_mae": mae(actual, naive_pred),
+        "naive_mape": mape(actual, naive_pred),
+        # NOTE: this is multi-step ARIMA minus hybrid, so it is dominated by
+        # the change in forecast horizon (374 days vs 1 day), not by what
+        # XGBoost contributes. it is also a percentage-POINT difference.
+        # for XGBoost's actual contribution compare hybrid vs rolling_arima.
         "improvement_pct": mape(actual, arima_test_pred.values) - mape(actual, hybrid_pred),
+        "xgb_contribution_pp": mape(actual, rolling_pred.values) - mape(actual, hybrid_pred),
     }
 
 
@@ -265,8 +287,10 @@ def main():
         print(f"\nRunning {ticker}...")
         result = run_ticker(ticker)
         results.append(result)
-        print(f"  ARIMA{result['arima_order']} MAPE: {result['arima_mape']:.2f}%   "
-              f"Hybrid MAPE: {result['hybrid_mape']:.2f}%")
+        print(f"  ARIMA{result['arima_order']} multi-step MAPE: {result['arima_mape']:.2f}%   "
+              f"Rolling: {result['rolling_arima_mape']:.2f}%   "
+              f"Hybrid: {result['hybrid_mape']:.2f}%   "
+              f"Naive: {result['naive_mape']:.2f}%")
 
     results_df = pd.DataFrame(results).sort_values("improvement_pct", ascending=False)
 
@@ -275,7 +299,25 @@ def main():
     results_df.to_csv(out_path, index=False)
 
     print(f"\nSaved -> {out_path}")
-    print(results_df.to_string(index=False))
+
+    pd.set_option("display.width", 220)
+
+    print("\n=== MAPE % — all five approaches, same test period ===")
+    cols = ["ticker", "arima_mape", "xgb_mape", "hybrid_mape",
+            "rolling_arima_mape", "naive_mape"]
+    tbl = results_df[cols].copy()
+    tbl.columns = ["ticker", "ARIMA multi-step", "XGB alone", "Hybrid",
+                   "Rolling ARIMA", "Naive"]
+    print(tbl.round(2).to_string(index=False))
+
+    print("\n  MEANS:")
+    for c in tbl.columns[1:]:
+        print(f"    {c:18s} {tbl[c].mean():6.2f}%")
+
+    beat = (results_df["hybrid_mape"] < results_df["rolling_arima_mape"]).sum()
+    print(f"\n  hybrid beats rolling ARIMA on {beat} of {len(results_df)} tickers")
+    print(f"  mean XGBoost contribution: {results_df['xgb_contribution_pp'].mean():+.2f} "
+          f"percentage points")
 
 
 if __name__ == "__main__":
