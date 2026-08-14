@@ -1,8 +1,18 @@
-data/*.csv
-residuals/
-forecasts/
-results/plots/
-results/tables/
+# the plots and tables ARE the deliverables - the README links to them, so they
+# have to be in the repo or every image is a broken link on github.
+#
+# these used to be ignored, which is why acf_summary/ never made it up while the
+# older plot folders did. the old ones had been committed before the ignore rule
+# was added, so git kept tracking them and the problem stayed invisible.
+#
+# same for data/*.csv. END_DATE in data_pipeline.py is pinned, so the CSVs are
+# meant to be reproducible fixtures rather than throwaway downloads. anyone
+# cloning this should be able to run eda.py without hitting Yahoo first.
+
 __pycache__/
 *.pyc
 .DS_Store
+
+# scratch folders, nothing in them worth keeping
+residuals/
+forecasts/
