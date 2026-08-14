@@ -20,15 +20,35 @@ DATA_DIR = "data"
 PLOTS_DIR = os.path.join("results", "plots")
 TABLES_DIR = os.path.join("results", "tables")
 
-# giving each task its own folder inside plots so it doesn't turn into a mess of 40+ random pngs once we add more tasks later
+# giving each task its own folder inside plots so it doesn't turn into a
+# mess of 40+ random pngs once we add more tasks later
 CLOSING_PRICE_DIR = os.path.join(PLOTS_DIR, "task4_closing_prices")
 DAILY_RETURNS_DIR = os.path.join(PLOTS_DIR, "task5_daily_returns")
 
-# SK Hynix trades in korea so it's priced in won, not dollars.
+# SK Hynix trades in korea so it's priced in won, not dollars. was
+# labelling every chart "Price (USD)" which is plainly wrong for that one
+# - 2.15 million dollars a share would be quite something.
+# no won symbol in the stats box on purpose: matplotlib's default font
+# has no glyph for it and it renders as an empty square. the axis label
+# already says KRW so the bare number is fine
 CURRENCY = {"000660.KS": ("KRW", "")}
 DEFAULT_CURRENCY = ("USD", "$")
 
-# Event that has an impact.
+# events list, reusing this in both task 4 and task 5 charts so
+# they line up and tell the same story.
+#
+# trimmed this down to just COVID. checked the other three and they
+# weren't earning their place - chatgpt moved the price a lot but not the
+# volatility, arm ipo did nothing outside arm itself, and the nvda split
+# can't show up at all because auto_adjust=True already applies it
+# backwards through the whole series.
+#
+# COVID is the one that survives testing: realised volatility in the 60
+# days after was 1.13x to 1.94x each stock's own baseline, on all 7
+# tickers that existed then. that's the chart-level version of the
+# volatility clustering the ARCH tests pick up in tasks 7-14 (ljung-box
+# on squared residuals rejects for 5 of the 8 tickers, at p < 1e-100 for
+# NVDA and SMCI)
 EVENTS = [
     ("2020-03-16", "COVID\nCrash", "red"),
 ]
@@ -72,7 +92,8 @@ def plot_closing_prices():
             event_date = pd.Timestamp(date_str)
 
             # only draw the event line if it actually falls inside
-            # this stock's date range (ARM won't have COVID on it since it didn't even exist yet)
+            # this stock's date range (ARM won't have COVID on it
+            # since it didn't even exist yet)
             if df_start <= event_date <= df_end:
 
                 # matplotlib wants dates as floats not timestamps
@@ -109,7 +130,8 @@ def plot_closing_prices():
             fontweight="bold"
         )
 
-        # pull the right currency for this ticker - everything is USD except SK Hynix
+        # pull the right currency for this ticker - everything is USD
+        # except SK Hynix
         code, symbol = CURRENCY.get(ticker, DEFAULT_CURRENCY)
 
         plt.xlabel("Date")
@@ -123,7 +145,8 @@ def plot_closing_prices():
         last_price = df["Close"].iloc[-1]
 
         # little stats box in the corner, just min/max/latest.
-        # no decimals for won, those prices are in the millions and 2150000.00 just looks daft
+        # no decimals for won, those prices are in the millions and
+        # 2150000.00 just looks daft
         dp = 0 if code == "KRW" else 2
         stats = (
             f"Min: {symbol}{min_price:,.{dp}f}\n"
@@ -197,7 +220,6 @@ def closing_price_summary():
             "latest_price": last_price,
             "total_return_pct": total_return_pct,
             "mean_price": df["Close"].mean(),
-            
             # flagging the currency in the table too, otherwise SK Hynix's
             # numbers look like a typo next to the USD ones
             "currency": CURRENCY.get(ticker, DEFAULT_CURRENCY)[0],
@@ -205,7 +227,8 @@ def closing_price_summary():
 
     summary_df = pd.DataFrame(rows)
 
-    # putting the biggest gainers on top, easier to see who actually did well vs who's been flat/down
+    # putting the biggest gainers on top, easier to see who
+    # actually did well vs who's been flat/down
     summary_df = summary_df.sort_values(
         "total_return_pct", ascending=False
     ).reset_index(drop=True)
@@ -233,7 +256,8 @@ def plot_daily_returns():
         df = pd.read_csv(path, parse_dates=["Date"])
         df = df.sort_values("Date").reset_index(drop=True)
 
-        # percentage change from yesterday's close to today's close this is basically the "how much did it move today" number,
+        # % change from yesterday's close to today's close
+        # this is basically the "how much did it move today" number,
         # which matters more than the raw price for the volatility side.
         # also puts every ticker on the same scale, so SK Hynix's won
         # prices stop being a problem here
@@ -242,9 +266,10 @@ def plot_daily_returns():
         # first row is always NaN since there's no "yesterday" for it
         df = df.dropna(subset=["Return"]).reset_index(drop=True)
 
-        # rolling std over last 21 days gives us a smoothed volatility line instead of just noisy daily spikes.
-        # this is basically showing where the stock had calm periods vs crazy periods, which normal ARIMA can't really pick up on
-        
+        # rolling std over last 21 days (~1 trading month), gives us
+        # a smoothed volatility line instead of just noisy daily spikes.
+        # this is basically showing where the stock had calm periods
+        # vs crazy periods, which normal ARIMA can't really pick up on
         df["RollingVol"] = df["Return"].rolling(window=21).std()
 
         r_min = df["Return"].min()
@@ -336,7 +361,10 @@ def plot_daily_returns():
         )
 
         # bottom graph - the rolling volatility. this is honestly the more
-        # important panel since it actually shows the "clustering" pattern it assumes the error variance is constant
+        # important panel since it actually shows the "clustering" pattern
+        # (calm patch, then a burst of crazy days, then calm again) which
+        # is the thing ARIMA structurally can't model - it assumes the
+        # error variance is constant
         ax2.plot(
             df["Date"],
             df["RollingVol"],
