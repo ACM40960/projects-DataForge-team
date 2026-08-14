@@ -21,8 +21,7 @@ DATA_DIR = "data"
 TABLES_DIR = os.path.join("results", "tables")
 PLOTS_DIR = os.path.join("results", "plots")
 ARIMA_FITS_DIR = os.path.join(PLOTS_DIR, "task7_14_arima_fits")
-PREDICTIONS_DIR = "forecasts" 
-RESIDUALS_DIR = "residuals"
+PREDICTIONS_DIR = "forecasts"
 
 #  for task 7 = NVDA to task 14 = 000660.KS
 TASK_TICKER_MAP = {
@@ -172,7 +171,7 @@ def adf_test_second_difference(results_df):
 
 # picks the final "d" for each ticker based on whatever has passed
 def determine_final_d(results_df, second_df):
-# the smallest d that works because every extra difference throws away a row and adds noise
+    # the smallest d that works because every extra difference throws away a row and adds noise
     final_rows = []
 
     for ticker in TICKERS:
@@ -230,15 +229,15 @@ def determine_final_d(results_df, second_df):
 
 
 # Task 7-14 -> get_d_for_ticker, plot_acf_pacf, find_best_order,
-# plot_train_test_forecast, check_residuals_look_random,
-# save_arima_handoff, fit_arima_for_ticker, fit_all_arima_models
+# check_residuals_look_random, insample_fit_metrics,
+# fit_arima_for_ticker, fit_all_arima_models
 
 
 def get_d_for_ticker(ticker):
     # grabs the d we already found in task 6
-    # reads back what task 6 decided instead of recalculating. 
-    # keeps the two stages from ever disagreeing, and means the d choice can be audited in csv rather 
-    
+    # reads back what task 6 decided instead of recalculating.
+    # keeps the two stages from ever disagreeing, and means the d choice can be audited in csv rather
+
     path = os.path.join(TABLES_DIR, "adf_final_d_selection.csv")
 
     if not os.path.exists(path):
@@ -263,9 +262,9 @@ def get_d_for_ticker(ticker):
 
 def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
     # the plot we actually look at to guess p and q
-    
+
     # ACF  = how related today's change is to the change N days ago, including everything in between
-    
+
     # PACF = same thing with the indirect effects stripped out -> hints at p
     # the shaded band is the "could just be randomness". bars inside it mean nothing, bars poking out are real signal.
     os.makedirs(ARIMA_FITS_DIR, exist_ok=True)
@@ -317,12 +316,12 @@ def plot_acf_pacf(series, ticker, d, chosen_p=None, chosen_q=None):
 
 def find_best_order(close_series, d, max_p=5, max_q=5):
     # using brute force grid search and having 36 combos keeping lowest BIC
-    
+
     # Also using BIC instead of AIC here on purpose - AIC's penalty for extra parameters is too weak when the series is close to
     # white noise (which several of these tickers are, per the  flat ACF/PACF plots). AIC ends up picking high-order models
     # that fit the historical data slightly better but forecast
-    # worse on new data. 
-    
+    # worse on new data.
+
     # BIC's penalty scales with sample size and
     # pushes back much harder against unnecessary p/q, which
     # matches what the ACF/PACF plots are actually showing
@@ -330,7 +329,7 @@ def find_best_order(close_series, d, max_p=5, max_q=5):
     best_bic = float("inf")
     best_order = None
     best_model = None
-    n_skipped = 0 # skip what is not converged or has NaN BIC as a result 
+    n_skipped = 0 # skip what is not converged or has NaN BIC as a result
 
     for p in range(max_p + 1):
         for q in range(max_q + 1):
@@ -342,7 +341,15 @@ def find_best_order(close_series, d, max_p=5, max_q=5):
                 converged = fitted.mle_retvals.get("converged", True)
                 bic_is_valid = not np.isnan(fitted.bic)
 
-                if not converged or not bic_is_valid:
+                # the converged flag on its own isn't enough - we hit a case
+                # where a model came back converged=True with a nonsense BIC
+                # and residuals bigger than the whole price range. if the
+                # errors are wider than the spread of the data the fit is
+                # broken no matter what the flag says
+                resid_std = fitted.resid.std()
+                fit_is_sane = np.isfinite(resid_std) and resid_std < close_series.std()
+
+                if not converged or not bic_is_valid or not fit_is_sane:
                     n_skipped += 1
                     continue
 
@@ -402,9 +409,9 @@ def check_residuals_look_random(fitted_model, ticker):
     if not looks_random:
         print(f"  (heads up: {ticker}'s residuals still show some pattern, ljung-box p={lb_pvalue:.4f})")
 
-    # same test but on squared residuals - catches volatility clustering instead of a missed mean pattern. 
+    # same test but on squared residuals - catches volatility clustering instead of a missed mean pattern.
     # ARIMA can't fix this by changing p/q, that's a job for xgboost
-    
+
     squared_residuals = residuals ** 2
     arch_result = acorr_ljungbox(squared_residuals, lags=[10], return_df=True)
     arch_pvalue = arch_result["lb_pvalue"].iloc[0]
@@ -416,37 +423,32 @@ def check_residuals_look_random(fitted_model, ticker):
     return looks_random, lb_pvalue, has_arch_effect, arch_pvalue
 
 
-def save_arima_handoff(ticker, df, fitted_model, d):
-    # one combined file per ticker instead of two - residual is
-    # just actual minus predicted, so keeping them in separate files was pure duplication.
-    # xgboost stage actually needs: Date, Actual, Predicted (the "L" / linear component), Residual (the "N" nonlinear leftover that is being trying to predict)
-    os.makedirs(RESIDUALS_DIR, exist_ok=True)
-
+def insample_fit_metrics(ticker, df, fitted_model, d):
+    # how well ARIMA fit everything it already saw. this is NOT a forecast -
+    # the model had these days during fitting, so the numbers are flattering
+    # by construction. the honest ones are in main.py, which forecasts a
+    # held-out 20% it never touched.
+    #
+    # drop the first d rows: differencing eats them, so there is no real
+    # prediction there and the "residual" would just be the raw price
     fitted_values = fitted_model.fittedvalues.iloc[d:]
     residuals = fitted_model.resid.iloc[d:]
 
-    handoff_df = pd.DataFrame({
+    fit_df = pd.DataFrame({
         "Date": df.loc[fitted_values.index, "Date"].values,
         "Actual": df.loc[fitted_values.index, "Close"].values,
         "Predicted": fitted_values.values,
         "Residual": residuals.values,
     })
 
-    save_path = os.path.join(RESIDUALS_DIR, f"{ticker}_arima_output.csv")
-    handoff_df.to_csv(save_path, index=False)
-    print(f"  Saved -> {save_path}")
-
-    # in-sample metrics - how well ARIMA fit everything it already seen (different from the 30-day holdout test further down,
-    # which checks how well it forecasts data it DIDN'T see)
-    
-    errors = handoff_df["Actual"] - handoff_df["Predicted"]
+    errors = fit_df["Actual"] - fit_df["Predicted"]
     rmse_in = np.sqrt(np.mean(errors ** 2))
     mae_in = np.mean(np.abs(errors))
-    mape_in = np.mean(np.abs(errors / handoff_df["Actual"])) * 100
+    mape_in = np.mean(np.abs(errors / fit_df["Actual"])) * 100
 
     print(f"  In-sample fit -> RMSE: {rmse_in:.2f}, MAE: {mae_in:.2f}, MAPE: {mape_in:.2f}%")
 
-    return handoff_df, {"rmse_insample": rmse_in, "mae_insample": mae_in, "mape_insample": mape_in}
+    return fit_df, {"rmse_insample": rmse_in, "mae_insample": mae_in, "mape_insample": mape_in}
 
 
 def fit_arima_for_ticker(ticker, task_number):
@@ -481,15 +483,15 @@ def fit_arima_for_ticker(ticker, task_number):
     print(f"  Best order: ARIMA{best_order}, AIC: {best_model.aic:.2f}")
 
     # difference d times just for the ACF/PACF plot - the actual fit above handles differencing internally via order=(p,d,q)
-    
+
     diffed = close_series.copy()
     for _ in range(d):
         diffed = diffed.diff()
 
     plot_acf_pacf(diffed, ticker, d, chosen_p=best_order[0], chosen_q=best_order[2])
 
-    # save the combined predictions+residuals file, get in-sample metrics back
-    handoff_df, insample_metrics = save_arima_handoff(ticker, df, best_model, d)
+    # in-sample fit numbers for the summary table
+    fit_df, insample_metrics = insample_fit_metrics(ticker, df, best_model, d)
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -589,6 +591,121 @@ def fit_all_arima_models():
     return fits_df
 
 
+# the project flow diagram. lives here rather than in its own file so the
+# repo stays at five scripts.
+#
+# needs graphviz, which is two separate installs on windows: "pip install
+# graphviz" for the python wrapper, then the actual graphviz program from
+# graphviz.org added to PATH. if either is missing we just skip it - a
+# missing picture shouldn't take the whole ARIMA run down with it. the png
+# is committed anyway, so this only matters if you want to change it.
+def make_flow_diagram():
+
+    try:
+        from graphviz import Digraph
+    except ImportError:
+        print("  (graphviz not installed, skipping flow diagram - pip install graphviz)")
+        return
+
+    g = Digraph("pipeline", format="png")
+
+    # splines="polyline" rather than "ortho": ortho refuses to place edge
+    # labels and leaves them floating in the middle of nowhere
+    g.attr(rankdir="TB", splines="polyline", nodesep="0.4", ranksep="0.55",
+           bgcolor="white", fontname="Helvetica", compound="true")
+    g.attr("node", shape="box", style="rounded,filled", fontname="Helvetica",
+           fontsize="11", margin="0.18,0.10")
+    g.attr("edge", fontname="Helvetica", fontsize="9", color="#444444")
+
+    BLUE, PINK, PURPLE, GREEN = "#dbeafe", "#fce7f3", "#e0e7ff", "#d1fae5"
+
+    with g.subgraph(name="cluster_in") as c:
+        c.attr(label="  Input   data_pipeline.py", style="rounded,filled",
+               fillcolor="#f0f7ff", color="#93c5fd", fontsize="12",
+               fontname="Helvetica-Bold", labeljust="l")
+        c.node("dl", "Yahoo Finance\n8 tickers, 2019 to 2026\nauto_adjust=True", fillcolor=BLUE)
+        c.node("csv", "data/*.csv\n1872 rows each\n0 missing, 0 dropped", fillcolor=BLUE)
+        c.node("split", "80 / 20 split\nchronological, no shuffle", fillcolor=BLUE)
+        c.edge("dl", "csv")
+        c.edge("csv", "split")
+
+    with g.subgraph(name="cluster_eda") as c:
+        c.attr(label="  Tasks 4 and 5   eda.py", style="rounded,filled",
+               fillcolor="#fffbeb", color="#fcd34d", fontsize="12",
+               fontname="Helvetica-Bold", labeljust="l")
+        c.node("eda", "Closing prices + COVID marker\nDaily returns + 21-day volatility",
+               fillcolor="#fef3c7")
+        c.node("eda2", "Finding: volatility clusters\nTails are fat (kurtosis up to 17)",
+               fillcolor="#fef3c7", shape="note")
+        c.edge("eda", "eda2", style="dashed")
+
+    with g.subgraph(name="cluster_s1") as c:
+        c.attr(label="  Stage 1   arima_model.py   Tasks 6 to 14",
+               style="rounded,filled", fillcolor="#fdf2f8", color="#f9a8d4",
+               fontsize="12", fontname="Helvetica-Bold", labeljust="l")
+        c.node("adf", "ADF tests\npick d\n7 tickers d=1, MU d=2", fillcolor=PINK)
+        c.node("bic", "BIC grid search\n36 combinations of p and q", fillcolor=PINK)
+        c.node("fit", "Fit ARIMA\non training 80% only", fillcolor=PINK)
+        c.node("ms", "Multi-step forecast\nall 374 days at once\ngoes flat", fillcolor=PINK)
+        c.node("roll", "Rolling one-step forecast\nforecast 1 day, observe actual,\nappend, repeat",
+               fillcolor=PINK)
+        c.node("resid", "In-sample residuals\nActual minus ARIMA fitted", fillcolor=PINK)
+        c.node("diag", "Ljung-Box on residuals: 5 of 8 reject\n"
+                       "ARCH on squared residuals: 8 of 8 reject",
+               fillcolor="#fbcfe8", shape="note")
+        c.edge("adf", "bic")
+        c.edge("bic", "fit")
+        c.edge("fit", "ms")
+        c.edge("fit", "roll")
+        c.edge("fit", "resid")
+        c.edge("resid", "diag", style="dashed")
+
+    with g.subgraph(name="cluster_s2") as c:
+        c.attr(label="  Stage 2   main.py", style="rounded,filled",
+               fillcolor="#eef2ff", color="#a5b4fc", fontsize="12",
+               fontname="Helvetica-Bold", labeljust="l")
+        c.node("feat", "Feature engineering\nlag returns, rolling volatility, MA ratios\n"
+                       "volume, high-low range, momentum\nday of week, ARIMA residual lags",
+               fillcolor=PURPLE)
+        c.node("xgb", "Train XGBoost\non training residuals", fillcolor=PURPLE)
+        c.node("pred", "Predict test residuals", fillcolor=PURPLE)
+        c.edge("feat", "xgb")
+        c.edge("xgb", "pred")
+
+    with g.subgraph(name="cluster_out") as c:
+        c.attr(label="  Output and evaluation", style="rounded,filled",
+               fillcolor="#ecfdf5", color="#6ee7b7", fontsize="12",
+               fontname="Helvetica-Bold", labeljust="l")
+        c.node("hyb", "Hybrid forecast\nrolling ARIMA + residual correction", fillcolor=GREEN)
+        c.node("cmp", "Compare all five on the same 20% test set", fillcolor=GREEN)
+        c.node("res", "ARIMA multi-step   31.15%\n"
+                      "XGBoost alone      21.95%\n"
+                      "Hybrid              3.18%\n"
+                      "Rolling ARIMA       2.87%\n"
+                      "Naive benchmark     2.86%   <-- wins",
+               fillcolor="#a7f3d0", fontname="Courier-Bold", fontsize="11")
+        c.edge("hyb", "cmp")
+        c.edge("cmp", "res")
+
+    # the wiring between lanes - this is the part that actually explains the
+    # project, because it shows both ARIMA branches feeding the comparison
+    g.edge("csv", "eda", style="dashed", constraint="false", label="  same data  ")
+    g.edge("split", "adf", label=" train ")
+    g.edge("resid", "feat", label=" train residuals ")
+    g.edge("roll", "hyb", label=" base forecast ")
+    g.edge("pred", "hyb", label=" correction ")
+    g.edge("ms", "cmp", style="dashed", label=" baseline ")
+    g.edge("roll", "cmp", style="dashed")
+
+    try:
+        g.render("flow_diagram", cleanup=True)
+        print("  Saved -> flow_diagram.png")
+    except Exception as e:
+        # graphviz python package present but the "dot" binary isn't on PATH
+        print(f"  (couldn't render flow diagram: {e})")
+        print("  install graphviz from graphviz.org and add it to PATH")
+
+
 if __name__ == "__main__":
     print("Task 6: Running ADF stationarity tests...")
     results_df = adf_test()
@@ -607,6 +724,9 @@ if __name__ == "__main__":
     print("=" * 60)
     fits_df = fit_all_arima_models()
     print(fits_df)
+
+    print("\nRebuilding the project flow diagram...")
+    make_flow_diagram()
 
     print("\nDone. Check results/tables/arima_fit_summary.csv and")
     print("results/plots/task7_14_arima_fits/ for the ACF/PACF plots.")
