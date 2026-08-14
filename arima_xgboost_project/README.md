@@ -108,7 +108,6 @@ flowchart LR
     D -->|"MAPE 2.87%"| E["Tracks price closely<br/>looks like success"]
     E --> F{"Check the<br/>naive benchmark"}
     F -->|"naive 2.86%<br/>ARIMA 2.87%"| G["The gain was the horizon,<br/>not the model"]
-    style G fill:#ffe6cc
 ```
 
 ---
@@ -124,7 +123,7 @@ as a Mermaid chart, which GitHub renders without any install:
 
 ```mermaid
 flowchart TD
-    A["data_pipeline.py<br/>Yahoo Finance 2019-2026<br/>auto_adjust=True"] --> B[("data/*.csv<br/>8 cleaned series")]
+    A["data_pipeline.py<br/>Yahoo Finance 2019-2026<br/>auto_adjust=True"] --> B["data/*.csv<br/>8 cleaned series"]
 
     B --> C["eda.py, Tasks 4-5"]
     C --> C1["closing prices<br/>+ COVID marker"]
@@ -135,7 +134,7 @@ flowchart TD
     D1 --> D2["BIC grid search 6x6<br/>pick p and q"]
     D2 --> D3["fit + ACF/PACF"]
     D3 --> D4["Ljung-Box on residuals<br/>Ljung-Box on SQUARED residuals"]
-    D3 --> E[("results/tables/<br/>arima_fit_summary.csv")]
+    D3 --> E["results/tables/<br/>arima_fit_summary.csv"]
 
     E --> F["main.py, Stage 2"]
     B --> F
@@ -144,9 +143,6 @@ flowchart TD
     F --> F3["XGBoost on residuals"]
     F --> F4["naive benchmark"]
     F1 & F2 & F3 & F4 --> G["model_comparison.csv"]
-
-    style D4 fill:#ffe6cc
-    style E fill:#e6f3ff
 ```
 
 The only hard dependency is that `arima_model.py` must finish before `main.py`,
