@@ -1,6 +1,6 @@
 # A Hybrid ARIMA-XGBoost Model for Forecasting Volatile AI Semiconductor Stocks
 
-**ACM 40960 Mathematical Modelling · University College Dublin**<br>
+**ACM 40960 Mathematical Modelling - University College Dublin**<br>
 Soham Barve, Asawari Lad<br>
 Supervisor: Dr. Sarp Akcay
 
