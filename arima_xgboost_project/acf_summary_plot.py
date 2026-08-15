@@ -1,6 +1,5 @@
 # acf_summary_plot.py
-# one figure instead of sixteen ACF/PACF panels.
-#
+
 # the per-ticker ACF/PACF plots in task7_14_arima_fits/ are the proper
 # box-jenkins identification tool and they stay. but they're a bad poster
 # graphic - 16 panels, and the reader has to know what a confidence band is
@@ -61,7 +60,7 @@ def main():
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.5),
                                    gridspec_kw={"width_ratios": [1.15, 1]})
 
-    # ---- left: strongest correlation per ticker ----
+    # left: strongest correlation per ticker 
     # MU gets its own colour because its bar is an artefact, not a finding
     colours = ["#c0392b" if t == "MU" else "#4a7ba7" for t in r.ticker]
     ax1.barh(r.ticker, r.max_abs_acf, color=colours)
@@ -81,7 +80,7 @@ def main():
     ax1.set_xlabel("Largest absolute autocorrelation in the differenced series")
     ax1.set_title("Six of eight have nothing above 0.14", fontweight="bold")
 
-    # ---- right: MU's lag-1, the over-differencing tell ----
+    # right: MU's lag-1, the over-differencing tell
     mu = r[r.ticker == "MU"].iloc[0]
     others = r[r.ticker != "MU"]
 
