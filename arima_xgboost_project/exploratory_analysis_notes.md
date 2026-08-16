@@ -1,16 +1,16 @@
-# Task 4 & Task 5 — Exploratory Data Analysis
+# Exploratory Data Analysis
 
-This covers the first two plotting tasks in the project: closing prices (Task 4) and
-daily returns / volatility (Task 5). Both tasks come with a plot per ticker and a
+This covers the first two sections of the project: closing prices and
+daily returns / volatility. Both sections come with a plot per ticker and a
 summary CSV so the numbers don't just live inside the chart images.
 
-Code: `eda.py`
-Plots: `results/plots/task4_closing_prices/`, `results/plots/task5_daily_returns/`
+Code: `exploratory_analysis.py`
+Plots: `results/plots/closing_prices/`, `results/plots/daily_returns/`
 Tables: `results/tables/closing_price_summary.csv`, `results/tables/daily_returns_summary.csv`
 
 ---
 
-## Task 4 — Closing Prices
+## Closing Prices
 
 ### What we did
 
@@ -56,7 +56,7 @@ more flexible forecasting approach is worth building.
 
 ---
 
-## Task 5 — Daily Returns & Volatility
+## Daily Returns & Volatility
 
 ### What we did
 
@@ -119,7 +119,7 @@ irregular, clustered volatility pattern that ARIMA's assumptions can't capture.
 
 ---
 
-## Task 4 vs Task 5 — Putting Return and Risk Together
+## Return and Risk Together
 
 | Ticker | Total Return (T4) | Volatility (T5) | Pattern |
 |---|---|---|---|

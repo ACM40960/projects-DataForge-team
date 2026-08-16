@@ -18,7 +18,7 @@ TICKERS = [
 
 DATA_DIR = "data"
 TABLES_DIR = os.path.join("results", "tables")
-PLOTS_DIR = os.path.join("results", "plots", "task6_hybrid_forecast")
+PLOTS_DIR = os.path.join("results", "plots", "forecast_comparison")
 
 TEST_SIZE = 0.2
 ROLLING_WINDOW = 21
@@ -41,7 +41,7 @@ def split_train_test(df, test_size=TEST_SIZE):
 
 
 def load_arima_order(ticker):
-    # reads Soham's best order from arima_model.py's BIC grid search
+    # reads best order from arima_forecasting.py's BIC grid search
     # so we don't run a second grid search here
     path = os.path.join(TABLES_DIR, "arima_fit_summary.csv")
     if not os.path.exists(path):
@@ -61,7 +61,7 @@ def load_arima_order(ticker):
 
 
 def fit_arima(train_close, order):
-    # fits ARIMA on training period only using Soham's BIC-selected order
+    # fits ARIMA on training period only using the BIC-selected order
     return ARIMA(train_close, order=order).fit()
 
 
@@ -146,7 +146,7 @@ def run_ticker(ticker):
     df = load_series(ticker)
     train_df, test_df = split_train_test(df)
 
-    # Stage 1: ARIMA — order comes from Soham's arima_model.py BIC grid search
+    # Stage 1: ARIMA — order comes from arima_forecasting.py BIC grid search
     order = load_arima_order(ticker)
     print(f"  Using ARIMA{order}")
 

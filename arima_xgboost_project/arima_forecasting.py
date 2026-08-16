@@ -1,4 +1,4 @@
-# arima_model.py
+# arima_forecasting.py
 
 import os
 import warnings
@@ -20,23 +20,10 @@ TICKERS = [
 DATA_DIR = "data"
 TABLES_DIR = os.path.join("results", "tables")
 PLOTS_DIR = os.path.join("results", "plots")
-ARIMA_FITS_DIR = os.path.join(PLOTS_DIR, "task7_14_arima_fits")
+ARIMA_FITS_DIR = os.path.join(PLOTS_DIR, "acf_pacf_plots")
 PREDICTIONS_DIR = "forecasts" 
 RESIDUALS_DIR = "residuals"
 
-#  for task 7 = NVDA to task 14 = 000660.KS
-TASK_TICKER_MAP = {
-    7: "NVDA",
-    8: "AMD",
-    9: "SMCI",
-    10: "ARM",
-    11: "MU",
-    12: "AVGO",
-    13: "TSM",
-    14: "000660.KS",
-}
-
-# Task 6   -> run_adf, adf_test, adf_test_second_difference, determine_final_d
 # work out how much differencing each ticker needs (d) [ d from the arima(p,d,q) model ]
 
 
@@ -229,15 +216,10 @@ def determine_final_d(results_df, second_df):
     return final_df
 
 
-# Task 7-14 -> get_d_for_ticker, plot_acf_pacf, find_best_order,
-# plot_train_test_forecast, check_residuals_look_random,
-# save_arima_handoff, fit_arima_for_ticker, fit_all_arima_models
-
 
 def get_d_for_ticker(ticker):
-    # grabs the d we already found in task 6
-    # reads back what task 6 decided instead of recalculating. 
-    # keeps the two stages from ever disagreeing, and means the d choice can be audited in csv rather 
+    # reads back what the ADF test decided instead of recalculating.
+    # keeps the two stages from ever disagreeing, and means the d choice can be audited in csv rather
     
     path = os.path.join(TABLES_DIR, "adf_final_d_selection.csv")
 
@@ -449,9 +431,9 @@ def save_arima_handoff(ticker, df, fitted_model, d):
     return handoff_df, {"rmse_insample": rmse_in, "mae_insample": mae_in, "mape_insample": mape_in}
 
 
-def fit_arima_for_ticker(ticker, task_number):
+def fit_arima_for_ticker(ticker):
 
-    print(f"\nTask {task_number}: Fitting ARIMA model for {ticker}...")
+    print(f"\nFitting ARIMA model for {ticker}...")
 
     path = os.path.join(DATA_DIR, f"{ticker}.csv")
 
@@ -468,7 +450,7 @@ def fit_arima_for_ticker(ticker, task_number):
 
     close_series = df["Close"]
     d = get_d_for_ticker(ticker)
-    print(f"  Using d={d} (from task 6 results)")
+    print(f"  Using d={d} (from ADF test results)")
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -531,40 +513,9 @@ def fit_all_arima_models():
     all_fits = []
     failed_tickers = []
 
-    # one line per ticker on purpose, matches the task sheet
-    # (task 7 = NVDA, task 8 = AMD, etc)
-
-    # Task 7: NVDA
-    result = fit_arima_for_ticker("NVDA", 7)
-    all_fits.append(result) if result else failed_tickers.append("NVDA")
-
-    # Task 8: AMD
-    result = fit_arima_for_ticker("AMD", 8)
-    all_fits.append(result) if result else failed_tickers.append("AMD")
-
-    # Task 9: SMCI
-    result = fit_arima_for_ticker("SMCI", 9)
-    all_fits.append(result) if result else failed_tickers.append("SMCI")
-
-    # Task 10: ARM
-    result = fit_arima_for_ticker("ARM", 10)
-    all_fits.append(result) if result else failed_tickers.append("ARM")
-
-    # Task 11: MU
-    result = fit_arima_for_ticker("MU", 11)
-    all_fits.append(result) if result else failed_tickers.append("MU")
-
-    # Task 12: AVGO
-    result = fit_arima_for_ticker("AVGO", 12)
-    all_fits.append(result) if result else failed_tickers.append("AVGO")
-
-    # Task 13: TSM
-    result = fit_arima_for_ticker("TSM", 13)
-    all_fits.append(result) if result else failed_tickers.append("TSM")
-
-    # Task 14: 000660.KS (SK Hynix)
-    result = fit_arima_for_ticker("000660.KS", 14)
-    all_fits.append(result) if result else failed_tickers.append("000660.KS")
+    for ticker in TICKERS:
+        result = fit_arima_for_ticker(ticker)
+        all_fits.append(result) if result else failed_tickers.append(ticker)
 
     fits_df = pd.DataFrame(all_fits)
 
@@ -590,7 +541,7 @@ def fit_all_arima_models():
 
 
 if __name__ == "__main__":
-    print("Task 6: Running ADF stationarity tests...")
+    print("Running ADF stationarity tests...")
     results_df = adf_test()
 
     print("\nChecking second difference for any tickers that failed...")
@@ -603,10 +554,10 @@ if __name__ == "__main__":
     print("\nDone. Check results/tables/ for all 3 csvs.")
 
     print("\n" + "=" * 60)
-    print("Tasks 7-14: Fitting ARIMA models for all 8 tickers...")
+    print("Fitting ARIMA models for all 8 tickers...")
     print("=" * 60)
     fits_df = fit_all_arima_models()
     print(fits_df)
 
     print("\nDone. Check results/tables/arima_fit_summary.csv and")
-    print("results/plots/task7_14_arima_fits/ for the ACF/PACF plots.")
+    print("results/plots/acf_pacf_plots/ for the ACF/PACF plots.")

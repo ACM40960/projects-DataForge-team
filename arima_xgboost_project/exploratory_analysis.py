@@ -1,8 +1,8 @@
-# eda.py
-# Task 4 - plotting closing prices for all 8 stocks + marking some
+# exploratory_analysis.py
+# Plotting closing prices for all 8 stocks + marking some
 # real world events on the chart so we can see how price reacted
 
-# Task 5 - daily returns + rolling volatility (basically how "jumpy"
+# daily returns + rolling volatility (basically how "jumpy"
 # the stock is on a day to day basis)
 
 import os
@@ -20,12 +20,12 @@ DATA_DIR = "data"
 PLOTS_DIR = os.path.join("results", "plots")
 TABLES_DIR = os.path.join("results", "tables")
 
-# giving each task its own folder inside plots/ so it doesn't turn
+# giving each section its own folder inside plots/ so it doesn't turn
 # into a mess of 40+ random pngs once we add more tasks later
-CLOSING_PRICE_DIR = os.path.join(PLOTS_DIR, "task4_closing_prices")
-DAILY_RETURNS_DIR = os.path.join(PLOTS_DIR, "task5_daily_returns")
+CLOSING_PRICE_DIR = os.path.join(PLOTS_DIR, "closing_prices")
+DAILY_RETURNS_DIR = os.path.join(PLOTS_DIR, "daily_returns")
 
-# events list, reusing this in both task 4 and task 5 charts so
+# events list, reusing this in both closing price and daily return charts so
 # they line up and tell the same story
 EVENTS = [
     ("2020-03-16", "COVID\nCrash", "red"),
@@ -36,8 +36,8 @@ EVENTS = [
 
 
 # ============================================================
-# TASK 4 Close Plotting with Event Markers
-# saves into -> results/plots/task4_closing_prices/
+# Close Plotting with Event Markers
+# saves into -> results/plots/closing_prices/
 # ============================================================
 def plot_closing_prices():
 
@@ -161,7 +161,7 @@ def plot_closing_prices():
         print(f"Saved -> {save_path}")
 
 
-# quick numbers version of task 4 - basically the same stats that
+# quick numbers version - basically the same stats that
 # show up in the corner box on the plot, just dumped into one csv
 # so i don't have to open 8 pngs and squint at the numbers
 def closing_price_summary():
@@ -215,8 +215,8 @@ def closing_price_summary():
 
 
 # ============================================================
-# TASK 5 daily returns + rolling volatility
-# saves into -> results/plots/task5_daily_returns/
+# Daily returns + rolling volatility
+# saves into -> results/plots/daily_returns/
 # ============================================================
 def plot_daily_returns():
 
@@ -379,7 +379,7 @@ def plot_daily_returns():
         print(f"Saved -> {save_path}")
 
 
-# numbers version of task 5. same stats as the plot's text box,
+# numbers version of daily returns. same stats as the plot's text box,
 # plus a couple extra (skew + kurtosis) that are useful for the
 # writeup later when talking about "fat tails" / non-normal returns
 def daily_returns_summary():
@@ -431,14 +431,14 @@ def daily_returns_summary():
 
 
 if __name__ == "__main__":
-    print("Task 4: Plotting closing prices with event markers...")
+    print("Plotting closing prices with event markers...")
     plot_closing_prices()
-    print("\nTask 4: Computing closing price summary table...")
+    print("\nComputing closing price summary table...")
     close_summary = closing_price_summary()
     print(close_summary)
-    print("\nTask 5: Plotting daily returns with volatility clustering...")
+    print("\nPlotting daily returns with volatility clustering...")
     plot_daily_returns()
-    print("\nTask 5: Computing daily returns summary table...")
+    print("\nComputing daily returns summary table...")
     returns_summary = daily_returns_summary()
     print(returns_summary)
-    print("\nDone. Check results/plots/task4_closing_prices/, results/plots/task5_daily_returns/, results/tables/closing_price_summary.csv, and results/tables/daily_returns_summary.csv")
+    print("\nDone. Check results/plots/closing_prices/, results/plots/daily_returns/, results/tables/closing_price_summary.csv, and results/tables/daily_returns_summary.csv")

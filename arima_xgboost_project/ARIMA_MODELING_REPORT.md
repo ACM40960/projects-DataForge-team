@@ -1,8 +1,8 @@
-# ARIMA Modeling Report — Tasks 6 through 14
+# ARIMA Modeling Report
 
 **For:** Asawari (XGBoost stage) and anyone reviewing the ARIMA side of the project
-**Code:** `arima_model.py`, `generate_handoff_readme.py`
-**Outputs:** `results/tables/`, `results/plots/task7_14_arima_fits/`, `residuals/`
+**Code:** `arima_forecasting.py`
+**Outputs:** `results/tables/`, `results/plots/acf_pacf_plots/`, `residuals/`
 
 This document explains everything done on the ARIMA side in plain language —
 what we did, why, what the plots show, what changed between two versions of
@@ -26,7 +26,7 @@ That's the only file needed to start the XGBoost stage.
 
 ---
 
-## 2. Task 6 — Figuring out how much to "difference" each stock (`d`)
+## 2. Figuring out how much to "difference" each stock (`d`)
 
 Stock prices trend up and down over time, which technically confuses ARIMA —
 it needs a series that doesn't trend, just wobbles around a fixed average.
@@ -46,7 +46,7 @@ more complex than the others.
 
 ---
 
-## 3. Tasks 7–14 — Fitting ARIMA per stock
+## 3. Fitting ARIMA per stock
 
 For each of the 8 tickers, three numbers had to be chosen: `p`, `d`, `q`.
 `d` came from Task 6. `p` and `q` decide how many past days' prices and past
@@ -70,7 +70,7 @@ outside is a real signal. The orange dashed line marks whichever lag the
 model actually picked as `p` or `q`.
 
 ### NVDA
-![NVDA ACF PACF](results/plots/task7_14_arima_fits/NVDA_acf_pacf.png)
+![NVDA ACF PACF](results/plots/acf_pacf_plots/NVDA_acf_pacf.png)
 
 Almost every bar sits inside the confidence band — NVDA's day-to-day price
 changes don't show much of a repeating pattern. Final BIC pick was
@@ -78,14 +78,14 @@ ARIMA(0,1,4) — no AR terms, a small MA component. The orange line in the ACF
 panel would now sit at lag 4.
 
 ### AMD
-![AMD ACF PACF](results/plots/task7_14_arima_fits/AMD_acf_pacf.png)
+![AMD ACF PACF](results/plots/acf_pacf_plots/AMD_acf_pacf.png)
 
 Same story — nearly flat, both panels close to noise. Final pick:
 ARIMA(2,1,2), a modest, symmetric AR/MA structure. Orange lines would sit at
 lag 2 on both panels now (moved in from the original AIC pick of lag 4).
 
 ### SMCI
-![SMCI ACF PACF](results/plots/task7_14_arima_fits/SMCI_acf_pacf.png)
+![SMCI ACF PACF](results/plots/acf_pacf_plots/SMCI_acf_pacf.png)
 
 Mostly flat with a couple of small dips around lag 3 and lag 9-10 — nothing
 dramatic. Final pick: ARIMA(0,1,4). Interesting twist: even at this simpler
@@ -94,7 +94,7 @@ Section 6) — meaning there's a real, if subtle, structure here that a
 low-order ARIMA still can't fully capture.
 
 ### ARM
-![ARM ACF PACF](results/plots/task7_14_arima_fits/ARM_acf_pacf.png)
+![ARM ACF PACF](results/plots/acf_pacf_plots/ARM_acf_pacf.png)
 
 The flattest of all 8 — almost every single bar sits inside the band, across
 both panels. Final pick: **ARIMA(0,1,0)** — the simplest model possible,
@@ -103,7 +103,7 @@ because both p and q came out as 0. This plot is basically confirming "this
 looks like pure random noise," and the model search agreed.
 
 ### MU
-![MU ACF PACF](results/plots/task7_14_arima_fits/MU_acf_pacf.png)
+![MU ACF PACF](results/plots/acf_pacf_plots/MU_acf_pacf.png)
 
 **This one looks completely different from the rest.** Real, sharp spikes
 outside the confidence band — a strong negative dip at lag 1 (around -0.45),
@@ -114,13 +114,13 @@ Final pick: ARIMA(2,2,4) (unchanged between AIC and BIC — the structure here
 is real enough that both criteria agreed).
 
 ### AVGO
-![AVGO ACF PACF](results/plots/task7_14_arima_fits/AVGO_acf_pacf.png)
+![AVGO ACF PACF](results/plots/acf_pacf_plots/AVGO_acf_pacf.png)
 
 Mostly flat with one modest dip around lag 4. Final pick: ARIMA(4,1,0) — all
 AR, no MA. The orange line in the PACF panel would now sit at lag 4.
 
 ### TSM
-![TSM ACF PACF](results/plots/task7_14_arima_fits/TSM_acf_pacf.png)
+![TSM ACF PACF](results/plots/acf_pacf_plots/TSM_acf_pacf.png)
 
 Flat overall, with a small but visible dip right at lag 1. Final pick:
 ARIMA(0,1,1) — and that single MA term lines up exactly with the lag-1 dip
@@ -128,7 +128,7 @@ visible in the plot. This is a case where the simplified BIC model and the
 visual plot agree cleanly.
 
 ### 000660.KS (SK Hynix)
-![000660.KS ACF PACF](results/plots/task7_14_arima_fits/000660.KS_acf_pacf.png)
+![000660.KS ACF PACF](results/plots/acf_pacf_plots/000660.KS_acf_pacf.png)
 
 The most "textured" plot of the 8 — visible bars poking outside the band at
 several lags (around 3, 7, 11, 14). Final pick: ARIMA(5,1,3) (unchanged
@@ -284,38 +284,30 @@ merged since `Residual` is always just `Actual − Predicted`, so having two
 files was pure duplication. Now there's exactly one file per ticker, nothing
 extra to merge or cross-reference.
 
-There's also `residuals/README.md`, auto-generated, which summarizes which
-tickers need XGBoost most and gives a quick accuracy reference table — read
-that first before opening the individual files.
-
 ---
 
 ## 9. Step-by-step — how Asawari should actually use this
 
-1. Open `residuals/README.md` first — it tells you which tickers have real
-   residual structure (AMD, SMCI, MU, TSM, 000660.KS) vs. which are closer
-   to random noise (NVDA, ARM, AVGO), so you know where to expect the
-   biggest improvement from your model.
-2. For each ticker, load `residuals/{ticker}_arima_output.csv` with pandas:
+1. For each ticker, load `residuals/{ticker}_arima_output.csv` with pandas:
    ```python
    import pandas as pd
    df = pd.read_csv("residuals/NVDA_arima_output.csv", parse_dates=["Date"])
    ```
-3. Treat the `Residual` column as your target variable — that's what your
+2. Treat the `Residual` column as your target variable — that's what your
    XGBoost model is trying to predict.
-4. Build whatever features your model needs (lagged residuals, technical
+3. Build whatever features your model needs (lagged residuals, technical
    indicators, whatever fits your approach) — that part is entirely your
    design choice.
-5. Train XGBoost per ticker (each stock gets its own model — don't mix data
+4. Train XGBoost per ticker (each stock gets its own model — don't mix data
    across tickers, since the scales are wildly different, e.g. 000660.KS is
    priced in Korean Won and its numbers will look huge compared to NVDA).
-6. Once you have XGBoost's predicted residual, combine it with ARIMA's
+5. Once you have XGBoost's predicted residual, combine it with ARIMA's
    `Predicted` column: `Final = Predicted + XGBoost's predicted Residual`.
-7. Compare your combined forecast's accuracy against ARIMA's own numbers in
+6. Compare your combined forecast's accuracy against ARIMA's own numbers in
    `results/tables/arima_fit_summary.csv` (same RMSE/MAE/MAPE columns). If
    the hybrid model beats plain ARIMA — especially on the 5 tickers flagged
    above — that comparison *is* the main result of the whole project.
-8. A few things to double check before diving in:
+7. A few things to double check before diving in:
    - Row counts differ per ticker — ARM only has ~689 rows (its IPO was
      Sept 2023), the rest have ~1,870+. Don't assume every file is the same length.
    - `Predicted` is ARIMA's fit on historical data, not a live future
