@@ -272,7 +272,7 @@ Price data from [Yahoo Finance](https://finance.yahoo.com) via the `yfinance` pa
 [soham.barve@ucdconnect.ie](mailto:soham.barve@ucdconnect.ie)
 
 **Asawari Lad** — residual correction with XGBoost and hybrid evaluation  
-[asawarilad2105@gmail.com](mailto:asawarilad2105@gmail.com)
+[asawari.lad@ucdconnect.ie](mailto:asawari.lad@ucdconnect.ie)
 
 ACM 40960 Mathematical Modelling, University College Dublin  
 Supervisor: Dr. Sarp Akcay
