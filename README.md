@@ -59,7 +59,7 @@ AVGO (networking silicon), TSM (fabrication). Daily closes, 2019 to 2026.
 
 ## Methodology
 
-![Flow diagram](arima_xgboost_project/flow_diagram.png)
+<img src="arima_xgboost_project/flow_diagram.png" alt="Flow diagram" width="700"/>
 
 **Collecting and cleaning the data.** Daily bars come from Yahoo Finance with
 `auto_adjust=True`, so splits and dividends are applied backwards through the

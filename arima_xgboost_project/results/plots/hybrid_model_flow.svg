@@ -1,0 +1,148 @@
+<svg viewBox="0 0 780 856" xmlns="http://www.w3.org/2000/svg" role="img" font-family="system-ui,-apple-system,sans-serif">
+  <title>Hybrid ARIMA + XGBoost Pipeline</title>
+  <desc>Two-stage hybrid forecasting pipeline for 8 AI semiconductor stocks.</desc>
+  <style>
+    .lbl { font-size:13px; fill:#1a1a1a; }
+    .sub { font-size:10.5px; fill:#555; }
+    .stl { font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .pill { font-size:10px; font-weight:600; }
+  </style>
+  <defs>
+    <marker id="ma" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3z" fill="#888"/></marker>
+    <marker id="mb" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3z" fill="#3b82f6"/></marker>
+    <marker id="mo" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3z" fill="#f97316"/></marker>
+    <marker id="mg" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3z" fill="#22c55e"/></marker>
+  </defs>
+
+  <!-- INPUT BAND y=10-100 -->
+  <rect x="10" y="10" width="760" height="90" rx="10" fill="#f0f4ff" stroke="#c7d2fe" stroke-width="1"/>
+  <text x="24" y="28" class="stl" fill="#6366f1">Input</text>
+
+  <rect x="28" y="34" width="140" height="50" rx="7" fill="#e0e7ff" stroke="#a5b4fc" stroke-width="1.5"/>
+  <text x="98" y="55" text-anchor="middle" class="lbl" font-weight="600">8 Stock CSVs</text>
+  <text x="98" y="70" text-anchor="middle" class="sub">NVDA AMD SMCI ARM</text>
+  <text x="98" y="81" text-anchor="middle" class="sub">MU AVGO TSM 000660.KS</text>
+
+  <line x1="168" y1="59" x2="210" y2="59" stroke="#888" stroke-width="2" marker-end="url(#ma)"/>
+
+  <rect x="213" y="34" width="148" height="50" rx="7" fill="#e0e7ff" stroke="#a5b4fc" stroke-width="1.5"/>
+  <text x="287" y="56" text-anchor="middle" class="lbl" font-weight="600">80 / 20 Split</text>
+  <text x="287" y="72" text-anchor="middle" class="sub">Train set · Test set</text>
+
+  <rect x="486" y="34" width="184" height="50" rx="7" fill="#e0e7ff" stroke="#a5b4fc" stroke-width="1.5"/>
+  <text x="578" y="55" text-anchor="middle" class="lbl" font-weight="600">ARIMA Orders</text>
+  <text x="578" y="70" text-anchor="middle" class="sub">arima_fit_summary.csv</text>
+  <text x="578" y="81" text-anchor="middle" class="sub">(Soham's BIC grid search)</text>
+
+  <line x1="252" y1="84" x2="252" y2="148" stroke="#3b82f6" stroke-width="2" marker-end="url(#mb)"/>
+  <text x="212" y="122" class="sub" fill="#3b82f6">train</text>
+  <line x1="325" y1="84" x2="325" y2="226" stroke="#3b82f6" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#mb)"/>
+  <text x="330" y="160" class="sub" fill="#3b82f6">test</text>
+  <line x1="578" y1="84" x2="578" y2="148" stroke="#3b82f6" stroke-width="2" marker-end="url(#mb)"/>
+  <text x="582" y="124" class="sub" fill="#3b82f6">(p,d,q)</text>
+
+  <!-- STAGE 1 BAND y=108-350 -->
+  <rect x="10" y="108" width="760" height="242" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+  <text x="24" y="126" class="stl" fill="#3b82f6">Stage 1 — ARIMA</text>
+
+  <rect x="140" y="148" width="200" height="54" rx="7" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="240" y="170" text-anchor="middle" class="lbl" font-weight="600">Fit ARIMA on Train</text>
+  <text x="240" y="185" text-anchor="middle" class="sub">fixed (p,d,q) · no 2nd grid search</text>
+  <text x="240" y="197" text-anchor="middle" class="sub">statsmodels ARIMA</text>
+
+  <line x1="340" y1="175" x2="444" y2="175" stroke="#3b82f6" stroke-width="2" marker-end="url(#mb)"/>
+  <line x1="240" y1="202" x2="240" y2="226" stroke="#3b82f6" stroke-width="2" marker-end="url(#mb)"/>
+
+  <rect x="444" y="148" width="234" height="54" rx="7" fill="#dbeafe" stroke="#93c5fd" stroke-width="1.5"/>
+  <text x="561" y="170" text-anchor="middle" class="lbl" font-weight="600">In-Sample Residuals</text>
+  <text x="561" y="185" text-anchor="middle" class="sub">actual − ARIMA fitted values</text>
+  <text x="561" y="197" text-anchor="middle" class="sub">(training period → XGBoost target)</text>
+
+  <rect x="86" y="226" width="308" height="62" rx="7" fill="#bfdbfe" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="240" y="248" text-anchor="middle" class="lbl" font-weight="600">Rolling One-Step ARIMA</text>
+  <text x="240" y="264" text-anchor="middle" class="sub">forecast 1 step → observe actual → update state</text>
+  <text x="240" y="278" text-anchor="middle" class="sub">repeat for every test day  (refit=False)</text>
+
+  <line x1="561" y1="202" x2="561" y2="392" stroke="#f97316" stroke-width="2" marker-end="url(#mo)"/>
+  <text x="565" y="298" class="sub" fill="#f97316">train residuals</text>
+  <text x="565" y="310" class="sub" fill="#f97316">→ XGB target</text>
+
+  <!-- rolling_pred path: down left side then right into Hybrid -->
+  <line x1="240" y1="288" x2="240" y2="692" stroke="#3b82f6" stroke-width="2.5" stroke-dasharray="6,3"/>
+  <polygon points="240,500 234,488 246,488" fill="#3b82f6"/>
+  <line x1="240" y1="692" x2="310" y2="692" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#mb)"/>
+  <rect x="18" y="474" width="76" height="20" rx="10" fill="#dbeafe" stroke="#3b82f6" stroke-width="1.2"/>
+  <text x="56" y="488" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1d4ed8">rolling_pred</text>
+  <line x1="94" y1="484" x2="240" y2="484" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3,3"/>
+
+  <!-- STAGE 2 BAND y=358-636 -->
+  <rect x="10" y="358" width="760" height="278" rx="10" fill="#fff7ed" stroke="#fed7aa" stroke-width="1"/>
+  <text x="24" y="376" class="stl" fill="#f97316">Stage 2 — XGBoost</text>
+
+  <rect x="411" y="392" width="300" height="84" rx="7" fill="#ffedd5" stroke="#fdba74" stroke-width="1.5"/>
+  <text x="561" y="410" text-anchor="middle" class="lbl" font-weight="600">Feature Engineering  <tspan font-size="9.5" fill="#92400e">· all shifted 1 day</tspan></text>
+
+  <rect x="420" y="419" width="80" height="18" rx="9" fill="#fed7aa" stroke="#fb923c" stroke-width="1"/>
+  <text x="460" y="432" text-anchor="middle" class="pill" fill="#7c2d12">Lag Returns</text>
+  <rect x="506" y="419" width="62" height="18" rx="9" fill="#fed7aa" stroke="#fb923c" stroke-width="1"/>
+  <text x="537" y="432" text-anchor="middle" class="pill" fill="#7c2d12">Volatility</text>
+  <rect x="574" y="419" width="64" height="18" rx="9" fill="#fed7aa" stroke="#fb923c" stroke-width="1"/>
+  <text x="606" y="432" text-anchor="middle" class="pill" fill="#7c2d12">MA Ratios</text>
+  <rect x="644" y="419" width="60" height="18" rx="9" fill="#fed7aa" stroke="#fb923c" stroke-width="1"/>
+  <text x="674" y="432" text-anchor="middle" class="pill" fill="#7c2d12">Momentum</text>
+
+  <rect x="420" y="443" width="52" height="18" rx="9" fill="#fecaca" stroke="#f87171" stroke-width="1"/>
+  <text x="446" y="456" text-anchor="middle" class="pill" fill="#7f1d1d">Volume</text>
+  <rect x="478" y="443" width="62" height="18" rx="9" fill="#fecaca" stroke="#f87171" stroke-width="1"/>
+  <text x="509" y="456" text-anchor="middle" class="pill" fill="#7f1d1d">HL Range</text>
+  <rect x="546" y="443" width="76" height="18" rx="9" fill="#fecaca" stroke="#f87171" stroke-width="1"/>
+  <text x="584" y="456" text-anchor="middle" class="pill" fill="#7f1d1d">Day of Week</text>
+  <rect x="628" y="443" width="76" height="18" rx="9" fill="#fde68a" stroke="#fbbf24" stroke-width="1"/>
+  <text x="666" y="456" text-anchor="middle" class="pill" fill="#78350f">Resid Lags</text>
+
+  <line x1="561" y1="476" x2="561" y2="510" stroke="#f97316" stroke-width="2" marker-end="url(#mo)"/>
+
+  <rect x="421" y="510" width="280" height="52" rx="7" fill="#fed7aa" stroke="#fb923c" stroke-width="1.5"/>
+  <text x="561" y="531" text-anchor="middle" class="lbl" font-weight="600">Train XGBoost</text>
+  <text x="561" y="547" text-anchor="middle" class="sub">target = ARIMA in-sample residuals</text>
+  <text x="561" y="559" text-anchor="middle" class="sub">200 trees · depth 3 · lr 0.05</text>
+
+  <line x1="561" y1="562" x2="561" y2="596" stroke="#f97316" stroke-width="2" marker-end="url(#mo)"/>
+
+  <rect x="421" y="596" width="280" height="40" rx="7" fill="#ffedd5" stroke="#fdba74" stroke-width="1.5"/>
+  <text x="561" y="614" text-anchor="middle" class="lbl" font-weight="600">Predict Test Residuals</text>
+  <text x="561" y="629" text-anchor="middle" class="sub">XGBoost on test-period features</text>
+
+  <line x1="561" y1="636" x2="561" y2="666" stroke="#22c55e" stroke-width="2" marker-end="url(#mg)"/>
+
+  <!-- OUTPUT BAND y=644-852 -->
+  <rect x="10" y="644" width="760" height="208" rx="10" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+  <text x="24" y="662" class="stl" fill="#22c55e">Output &amp; Evaluation</text>
+
+  <rect x="310" y="666" width="400" height="52" rx="7" fill="#bbf7d0" stroke="#4ade80" stroke-width="1.8"/>
+  <text x="510" y="688" text-anchor="middle" class="lbl" font-weight="600">Hybrid Forecast</text>
+  <text x="510" y="706" text-anchor="middle" class="sub" font-weight="600">= rolling_ARIMA_pred  +  XGBoost_residual_pred</text>
+
+  <line x1="510" y1="718" x2="510" y2="748" stroke="#22c55e" stroke-width="2" marker-end="url(#mg)"/>
+
+  <rect x="310" y="748" width="400" height="82" rx="7" fill="#dcfce7" stroke="#86efac" stroke-width="1.5"/>
+  <text x="510" y="768" text-anchor="middle" class="lbl" font-weight="600">Evaluation vs ARIMA Baseline</text>
+  <text x="510" y="783" text-anchor="middle" class="sub">RMSE · MAE · MAPE on 20% test set · all 8 tickers</text>
+  <line x1="328" y1="795" x2="692" y2="795" stroke="#d1fae5" stroke-width="1"/>
+  <text x="390" y="809" class="sub" fill="#15803d" font-weight="700">ARIMA MAPE</text>
+  <text x="517" y="809" class="sub" fill="#15803d" font-weight="700">Hybrid MAPE</text>
+  <text x="640" y="809" class="sub" fill="#15803d" font-weight="700">Gain</text>
+  <text x="390" y="823" class="sub">20 – 49%</text>
+  <text x="517" y="823" class="sub" fill="#16a34a" font-weight="600">2 – 5%</text>
+  <text x="640" y="823" class="sub" fill="#16a34a" font-weight="600">↓ 16–46 pp</text>
+
+  <!-- Legend -->
+  <rect x="28" y="748" width="248" height="82" rx="7" fill="none" stroke="#d1d5db" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="152" y="766" text-anchor="middle" class="sub" font-weight="700" fill="#6b7280">Legend</text>
+  <line x1="44" y1="782" x2="80" y2="782" stroke="#3b82f6" stroke-width="2"/>
+  <text x="88" y="786" class="sub" fill="#3b82f6">ARIMA flow</text>
+  <line x1="44" y1="800" x2="80" y2="800" stroke="#f97316" stroke-width="2"/>
+  <text x="88" y="804" class="sub" fill="#f97316">XGBoost flow</text>
+  <line x1="44" y1="818" x2="80" y2="818" stroke="#22c55e" stroke-width="2"/>
+  <text x="88" y="822" class="sub" fill="#22c55e">Hybrid output</text>
+</svg>
