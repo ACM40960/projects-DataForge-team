@@ -63,7 +63,7 @@ as the highest volatile class of equities in the present cycle. The cycles of de
 GPU and memory shortages, along with earning surprises, result in volatility that is hard 
 for regular statistical models to capture. Both ARM and SMCI stocks have a daily return 
 standard deviation of 4.80%, which is more than twice of TSM’s 2.36%. 
-The value of excess kurtosis is 17.21% in the case of ARM.
+The value of excess kurtosis is 17.21 in the case of ARM.
 
 <img width="1440" height="720" alt="volatility_comparison" src="https://github.com/user-attachments/assets/ad42a86f-078b-4afd-ba8a-36459a61852f" />
 
