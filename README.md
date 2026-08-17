@@ -65,6 +65,9 @@ for regular statistical models to capture. Both ARM and SMCI stocks have a daily
 standard deviation of 4.80%, which is more than twice of TSM’s 2.36%. 
 The value of excess kurtosis is 17.21% in the case of ARM.
 
+<img width="1440" height="720" alt="volatility_comparison" src="https://github.com/user-attachments/assets/ad42a86f-078b-4afd-ba8a-36459a61852f" />
+
+
 Volatility is precisely the key. A good hybrid design should be easier to prove where 
 this degree of volatility exists within the series, and harder to falsify, since any 
 flat or inactive forecast gets punished right away.
