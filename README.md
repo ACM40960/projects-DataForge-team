@@ -58,6 +58,17 @@ not depend on one business model only: NVDA and AMD (GPUs), SMCI (servers), ARM
 (architecture), MU and 000660.KS / SK Hynix (memory), AVGO (networking silicon),
 TSM (fabrication). Daily closes, 2019 to 2026.
 
+The reason why AI semiconductor stocks are selected is that they have been identified 
+as the highest volatile class of equities in the present cycle. The cycles of demand for 
+GPU and memory shortages, along with earning surprises, result in volatility that is hard 
+for regular statistical models to capture. Both ARM and SMCI stocks have a daily return 
+standard deviation of 4.80%, which is more than twice of TSM’s 2.36%. 
+The value of excess kurtosis is 17.21% in the case of ARM.
+
+Volatility is precisely the key. A good hybrid design should be easier to prove where 
+this degree of volatility exists within the series, and harder to falsify, since any 
+flat or inactive forecast gets punished right away.
+
 ---
 
 ## Methodology
