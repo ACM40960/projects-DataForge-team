@@ -172,26 +172,31 @@ because BIC selected ARIMA(0,1,0) and that is the random walk model. Out of 36
 possible order combinations, it independently decided "do not model this".
 
 Per ticker:
-
-| Ticker | Multi-Step MAPE | Rolling ARIMA MAPE | Hybrid MAPE |
-|---|---|---|---|
-| TSM | 27.69% | **1.93%** | 2.17% |
-| NVDA | 20.92% | **2.04%** | 2.18% |
-| AVGO | 36.59% | **2.28%** | 2.66% |
-| AMD | 32.16% | **2.73%** | 2.93% |
-| 000660.KS | 49.35% | **3.05%** | 3.34% |
-| MU | 39.35% | **3.31%** | 3.51% |
-| ARM | 22.18% | **3.44%** | 3.92% |
-| SMCI | 20.98% | **4.20%** | 4.49% |
-| **Mean** | **31.15%** | **2.87%** | **3.15%** |
-
+ 
+| Ticker | Multi-Step MAPE | Multi-Step RMSE | Rolling MAPE | Rolling RMSE | Hybrid MAPE | Hybrid RMSE |
+|---|---|---|---|---|---|---|
+| TSM | 27.69% | 111.59 | **1.93%** | 6.97 | 2.09% | 7.39 |
+| NVDA | 20.92% | 42.21 | **2.04%** | 4.34 | 2.16% | 4.52 |
+| AVGO | 36.59% | 141.08 | **2.28%** | 9.91 | 2.57% | 10.57 |
+| AMD | 32.16% | 115.34 | **2.73%** | 9.89 | 2.88% | 10.12 |
+| 000660.KS | 49.35% | 642,238.72 | **3.05%** | 43,263.49 | 3.36% | 44,301.66 |
+| MU | 39.35% | 254.86 | **3.31%** | 19.26 | 3.55% | 19.82 |
+| ARM | 22.18% | 82.40 | **3.44%** | 12.33 | 4.06% | 15.26 |
+| SMCI | 20.98% | 8.85 | **4.20%** | 2.30 | 4.52% | 2.45 |
+| **Mean MAPE** | **31.15%** | | **2.87%** | | **3.15%** | |
+ 
+RMSE is in each stock's own currency, so the 000660.KS figures are in KRW
+against USD for the other seven and are not comparable across rows. That is
+why MAPE is the headline metric. RMSE and MAE per ticker are also written to
+`model_comparison.csv`.
+ 
 The average contribution from XGBoost is **-0.28 percentage points**. On every
 ticker, the outlook gets worse due to the correction. It is confirmed by
 directional accuracy: the hybrid accurately predicts the direction of the
 following day 45% to 52% of the time, averaging 49.2%, which is a coin flip,
 across the eight tickers. Only because daily moves are tiny does a 2.87% MAPE seem
 accurate.
-
+ 
 The variance of ARIMA's residuals has structure, whereas the mean has very little.
 The extent of tomorrow's mistake is really predictable because ARCH tests reject on
 8 out of 8 tickers at p < 0.0001. However, direction is where the signal is
