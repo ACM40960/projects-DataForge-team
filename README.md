@@ -343,11 +343,11 @@ Price data from [Yahoo Finance](https://finance.yahoo.com) via the `yfinance` pa
 ---
 
 ## Authors
-**Asawari Lad**  
+**Asawari Lad (25212736)**  
 Module: ACM 40960 — Mathematical Modelling  
 University College Dublin
 
-**Soham Barve**  
+**Soham Barve (25220835))**  
 Module: ACM 40960 — Mathematical Modelling  
 University College Dublin
 
